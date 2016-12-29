@@ -1,4 +1,5 @@
 This requires GitLab Runner using Docker Executor in Privileged mode.
+`/etc/gitlab-runner/config.toml`
 
 ```
 [[runners]]
