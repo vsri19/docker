@@ -11,5 +11,7 @@ build:
 commit-change:
   script: "echo 'change!'"
   only:
-    commit-message:
-      - /\[runfullpipeline\]/
+    changes:
+      - Dockerfile
+      - docker/scripts/*
+      - test.txt
