@@ -7,3 +7,6 @@ build:
   stage: build
   script:
     - docker build -t test .
+
+test-job:
+  script: "touch test-job.txt; echo 'Testing!' > test-job.txt"
