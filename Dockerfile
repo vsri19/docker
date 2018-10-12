@@ -1,2 +1,5 @@
-FROM alpine:latest
-RUN apk add -U git
+FROM python:2.7
+
+RUN pip install howdoi
+
+CMD ['howdoi']
