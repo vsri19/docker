@@ -11,5 +11,5 @@ build:
 commit-change:
   script: "echo 'change!'"
   only:
-    message:
+    commit-message:
       - /\[runfullpipeline\]/
