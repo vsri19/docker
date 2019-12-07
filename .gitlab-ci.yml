@@ -4,16 +4,16 @@ services:
   - docker:dind
 
 # DOCKER_DRIVER: Requires when sharing folder with running containers
-# IMAGE_NAME   : Name of the image to be used for all refs (branches and tags)
+# IMAGE_NAME   : Name of the branche or tag name
 variables:
   DOCKER_DRIVER: overlay
-  IMAGE_NAME: hello-world
+  IMAGE_NAME: $CI_COMMIT_REF_SLUG
 
 # Stages: sequential stages for this project to execute one after another
 stages:
-  - build_image
-  - test_image
-  - tag_image
+  - build
+  - test
+  - deploy
 
 # Bring command shortcuts like 'docker_build_push' made in file 'prepare'
 before_script:
@@ -22,19 +22,29 @@ before_script:
 # Build and push image using oneshot command with branch name as image name
 # (does not used long conventional coding like 'docker build -t test .' ...)
 build_image:
-  stage: build_image
+  stage: build
   script:
     - docker_build_push $IMAGE_NAME
     - docker_tag_push $IMAGE_NAME compiled
+  only:
+    - tags
+    - branch
 
 # Test image by executing its code (docker pull followed with docker run)
 test_image:
-  stage: test_image
+  stage: test
   script:
     - docker_test_image $IMAGE_NAME compiled
+  only:
+    - tags
+    - branch
 
 # Tag image as latest on branch name when previous test is passed
-tag_image:
-  stage: tag_image
+deploy_image:
+  stage: deploy
   script:
     - docker_tagg_image $IMAGE_NAME compiled latest
+  when: manual
+  only:
+    - tags
+    - master
