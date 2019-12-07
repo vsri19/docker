@@ -6,4 +6,9 @@ services:
 build:
   stage: build
   script:
-    - docker build -t test .
+    # Commenting old code (as build, push, & tag needs more coding)
+    #- docker build -t test .
+    # Using one shot commands from dind (to build, push, & tag all)
+    - docker_build_push $CI_COMMIT_REF_NAME
+    - docker_tag_push $CI_COMMIT_REF_NAME latest
+
