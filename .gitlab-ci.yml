@@ -21,7 +21,7 @@ before_script:
 
 # Build and push image using oneshot command with branch name as image name
 # (does not used long conventional coding like 'docker build -t test .' ...)
-build_image:
+build:
   stage: build
   script:
     - docker_build_push $IMAGE_NAME
@@ -31,20 +31,39 @@ build_image:
     - branch
 
 # Test image by executing its code (docker pull followed with docker run)
-test_image:
+test:
   stage: test
   script:
     - docker_test_image $IMAGE_NAME compiled
+  environment:
+    name: testing
   only:
     - tags
     - branch
 
-# Tag image as latest on branch name when previous test is passed
-deploy_image:
+# Tag image as staging on branch name when previous test is passed
+deploy_staging:
   stage: deploy
   script:
-    - docker_tagg_image $IMAGE_NAME compiled latest
-  when: manual
+    - docker_test_image $IMAGE_NAME compiled
+    - docker_tagg_image $IMAGE_NAME compiled staging
+  environment:
+    name: staging
+    url: https://gitlab.com/$CI_PROJECT_PATH/pipelines
   only:
     - tags
+    - master
+
+# Tag image as latest on branch name when previous test is passed
+deploy_prod:
+  stage: deploy
+  script:
+    - docker_test_image $IMAGE_NAME staging
+    - docker_tagg_image $IMAGE_NAME staging latest
+  when: manual
+  environment:
+    name: production
+    url: https://gitlab.com/$CI_PROJECT_PATH/pipelines
+  when: manual
+  only:
     - master
