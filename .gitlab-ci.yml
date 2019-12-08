@@ -3,67 +3,68 @@ image: docker:latest
 services:
   - docker:dind
 
-# DOCKER_DRIVER: Requires when sharing folder with running containers
-# IMAGE_NAME   : Name of the branche or tag name
+# DOCKER_DRIVER : Requires when sharing folder with running containers
+# CI_DEBUG_TRACE: Do not print trace of Gitlab CI variables for each job
 variables:
   DOCKER_DRIVER: overlay
-  IMAGE_NAME: $CI_COMMIT_REF_SLUG
+  CI_DEBUG_TRACE: "false"
 
-# Stages: sequential stages for this project to execute one after another
+# Project stages that will be executed in sequence build, test, deploy (staging onwards)
 stages:
   - build
   - test
   - deploy
 
-# Bring command shortcuts like 'docker_build_push' made in file 'prepare'
+# Load command shortcuts like 'docker_build_push' using bash script 'prepare' in repository
+# it avoids writing series of commands like 'docker build -t test .', 'docker tag'... etc.
 before_script:
-- source prepare
+  - source prepare
 
-# Build and push image using oneshot command with branch name as image name
-# (does not used long conventional coding like 'docker build -t test .' ...)
 build:
   stage: build
+  variables:
+    # CI_DEBUG_TRACE: Only print debug trace for first jov (that's build)
+    CI_DEBUG_TRACE: "true"
   script:
-    - docker_build_push $IMAGE_NAME
-    - docker_tag_push $IMAGE_NAME compiled
+    - docker_build_artifact build_artifact
+  artifacts:
+    paths:
+      - build_artifact.tar
+    when: on_success
+    expire_in: 1 month
+  when: always
   only:
-    - tags
-    - branch
+    - dff
+  except:
+    - ksdjflkj
 
-# Test image by executing its code (docker pull followed with docker run)
 test:
   stage: test
+  when: on_success
   script:
-    - docker_test_image $IMAGE_NAME compiled
+    - docker_test_image $CI_BUILD_SHA
   environment:
     name: testing
-  only:
-    - tags
-    - branch
-
-# Tag image as staging on branch name when previous test is passed
-deploy_staging:
-  stage: deploy
-  script:
-    - docker_test_image $IMAGE_NAME compiled
-    - docker_tagg_image $IMAGE_NAME compiled staging
-  environment:
-    name: staging
     url: https://gitlab.com/$CI_PROJECT_PATH/pipelines
-  only:
-    - tags
-    - master
 
-# Tag image as latest on branch name when previous test is passed
-deploy_prod:
+staging:
   stage: deploy
-  script:
-    - docker_test_image $IMAGE_NAME staging
-    - docker_tagg_image $IMAGE_NAME staging latest
   when: manual
   environment:
-    name: production
-    url: https://gitlab.com/$CI_PROJECT_PATH/pipelines
+    name: UAT
+  only:
+    - master
+  script:
+    - docker_tag_push $CI_BUILD_SHA staged
+
+# On manual action deploy (or tag) artifact (or $CI_BUILD_SHA) as latest (or released)
+
+production:
+  stage: deploy
   when: manual
   only:
     - master
+  environment:
+    name: PROD
+  script:
+    - docker_tag_push $CI_BUILD_SHA latest
