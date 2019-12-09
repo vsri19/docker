@@ -3,7 +3,68 @@ image: docker:latest
 services:
   - docker:dind
 
+# DOCKER_DRIVER : Requires when sharing folder with running containers
+# CI_DEBUG_TRACE: Do not print trace of Gitlab CI variables for each job
+variables:
+  DOCKER_DRIVER: overlay
+  CI_DEBUG_TRACE: "false"
+
+# Project stages that will be executed in sequence build, test, deploy (staging onwards)
+stages:
+  - build
+  - test
+  - deploy
+
+# Load command shortcuts like 'docker_build_push' using bash script 'prepare' in repository
+# it avoids writing series of commands like 'docker build -t test .', 'docker tag'... etc.
+before_script:
+  - source prepare
+
 build:
   stage: build
+  variables:
+    # CI_DEBUG_TRACE: Only print debug trace for first jov (that's build)
+    CI_DEBUG_TRACE: "true"
   script:
-    - docker build -t test .
+    - docker_build_artifact build_artifact
+  artifacts:
+    paths:
+      - build_artifact.tar
+    when: on_success
+    expire_in: 1 month
+  when: always
+  only:
+    - dff
+  except:
+    - ksdjflkj
+
+test:
+  stage: test
+  when: on_success
+  script:
+    - docker_test_image $CI_BUILD_SHA
+  environment:
+    name: testing
+    url: https://gitlab.com/$CI_PROJECT_PATH/pipelines
+
+staging:
+  stage: deploy
+  when: manual
+  environment:
+    name: UAT
+  only:
+    - master
+  script:
+    - docker_tag_push $CI_BUILD_SHA staged
+
+# On manual action deploy (or tag) artifact (or $CI_BUILD_SHA) as latest (or released)
+
+production:
+  stage: deploy
+  when: manual
+  only:
+    - master
+  environment:
+    name: PROD
+  script:
+    - docker_tag_push $CI_BUILD_SHA latest

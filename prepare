@@ -1,0 +1,58 @@
+#!/bin/sh
+
+export CI_BUILD_SHA="x${CI_BUILD_REF:0:8}"
+
+# Automatically login docker
+docker() {
+	if [ ! -e ~/.docker/config.json ]; then
+		command docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.gitlab.com
+	fi
+	command docker "$@"
+}
+
+docker_build_artifact() {
+	echo Building docker image...
+	# $CI_REGISTRY_IMAGE = registry.gitlab.com/dkrprojs/ex-docker-build-pipeline
+	docker build --rm -f "Dockerfile" -t $CI_REGISTRY_IMAGE:$CI_BUILD_SHA .
+
+    echo Printing list of images...
+    docker images
+
+	echo Saving our artifact (docker image)
+	docker save $CI_REGISTRY_IMAGE:$CI_BUILD_SHA > $1.tar
+
+	echo Verifying artifact exsist in files
+	ls -al $1.tar
+}
+
+
+docker_test_image() {
+	echo Pulling docker image...
+	docker pull $CI_REGISTRY_IMAGE:$1 >/dev/null
+
+    echo Printing list of images...
+    docker images
+
+	echo Running image as test...
+	docker ps -a | grep test_container
+	docker run -d --rm --name test_container $CI_REGISTRY_IMAGE:$1
+	docker ps -a | grep test_container
+
+	echo Showing container status and logs...
+	docker logs --tail 100 test_container
+
+	echo Stopping container and verify...
+	docker container kill test_container
+	docker ps -a | grep test_container
+}
+
+docker_tag_push() {
+	echo Pulling docker image...
+	docker pull $CI_REGISTRY_IMAGE:$1 >/dev/null
+
+	echo Tagging docker image...
+	docker tag $CI_REGISTRY_IMAGE:$1 $CI_REGISTRY_IMAGE:$2
+
+	echo Pushing docker image...
+	docker push $CI_REGISTRY_IMAGE:$2
+}
