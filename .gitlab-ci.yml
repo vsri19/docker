@@ -6,4 +6,4 @@ services:
 build:
   stage: build
   script:
-    - docker build -t test .
+    - docker-compose -f ${CI_PROJECT_DIR}/stack/testing/docker-compose.yml up -d
