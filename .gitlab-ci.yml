@@ -20,5 +20,5 @@ test:
   script:
 
     - cp .env.sample .env # copy environement variable
-    - docker-compose up -d
+    - docker-compose version
     # run some test here
