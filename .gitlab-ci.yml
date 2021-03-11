@@ -1,4 +1,5 @@
-image: docker:latest
+image: tvial/alpine-docker-compose
+
 
 services:
   - docker:dind
